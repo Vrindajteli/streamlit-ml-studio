@@ -7,4 +7,4 @@ seaborn
 reportlab
 openpyxl
 joblib
-sklearn
+scikit-learn
