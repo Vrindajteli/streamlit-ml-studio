@@ -6,3 +6,5 @@ matplotlib
 seaborn
 reportlab
 openpyxl
+joblib
+sklearn
