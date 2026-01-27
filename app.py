@@ -1,5 +1,4 @@
 import streamlit as st
-# (Keep your other imports)
 import eda
 import visualization
 import training
@@ -93,3 +92,4 @@ elif page == "Training":
 
 elif page == "Testing":
     testing.show()
+
