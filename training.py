@@ -2,7 +2,6 @@ def show():
     import streamlit as st
     import pandas as pd
     import numpy as np
-    import matplotlib.pyplot as plt
     import joblib
     import tempfile
 
@@ -27,7 +26,7 @@ def show():
     st.write("Train models, auto-detect the best algorithm, and export results.")
 
     # --------------------------------------------------
-    # SESSION STATE INIT (MODEL ONLY)
+    # SESSION STATE INIT
     # --------------------------------------------------
     defaults = {
         "trained": False,
@@ -69,7 +68,7 @@ def show():
     }
 
     # --------------------------------------------------
-    # AUTO MODEL SELECTION
+    # AUTO MODEL SELECTION FUNCTION
     # --------------------------------------------------
     def auto_select_model(task, X, y, test_size):
         scaler = StandardScaler()
@@ -104,12 +103,12 @@ def show():
         return min(scores, key=scores.get) if task == "Regression" else max(scores, key=scores.get)
 
     # --------------------------------------------------
-    # DATA UPLOAD (ISOLATED)
+    # DATA UPLOAD
     # --------------------------------------------------
     file = st.file_uploader(
         "Upload Dataset for Training (CSV or XLSX)",
         type=["csv", "xlsx"],
-        key="training_file"   # 🔑 IMPORTANT
+        key="training_file"
     )
 
     if not file:
@@ -117,8 +116,6 @@ def show():
         st.stop()
 
     df = pd.read_csv(file) if file.name.endswith(".csv") else pd.read_excel(file)
-
-    # 🔧 COLUMN SAFETY
     df.columns = df.columns.str.strip()
 
     st.subheader("Dataset Preview")
@@ -163,26 +160,33 @@ def show():
     auto_detect = st.sidebar.checkbox("Auto-detect Best Model", value=True)
 
     # --------------------------------------------------
-    # ALGORITHM SELECTION
+    # ALGORITHM SELECTION (VALIDATION ADDED)
     # --------------------------------------------------
-    if auto_detect and features:
-        st.session_state.auto_model_name = auto_select_model(
-            task, df[features], df[target], test_size
-        )
-
     model_list = list(
         REGRESSION_MODELS.keys()
         if task == "Regression"
         else CLASSIFICATION_MODELS.keys()
     )
 
-    default_index = (
-        model_list.index(st.session_state.auto_model_name)
-        if auto_detect and st.session_state.auto_model_name in model_list
-        else 0
-    )
+    if auto_detect and features:
+        st.session_state.auto_model_name = auto_select_model(
+            task, df[features], df[target], test_size
+        )
 
-    algo_name = st.sidebar.selectbox("Select Algorithm", model_list, index=default_index)
+        algo_name = st.sidebar.selectbox(
+            "Selected Algorithm (Auto-detected)",
+            model_list,
+            index=model_list.index(st.session_state.auto_model_name),
+            disabled=True
+        )
+
+        st.sidebar.info("Algorithm selection is locked because Auto-detect is enabled.")
+
+    else:
+        algo_name = st.sidebar.selectbox(
+            "Select Algorithm",
+            model_list
+        )
 
     model = (
         REGRESSION_MODELS[algo_name]
