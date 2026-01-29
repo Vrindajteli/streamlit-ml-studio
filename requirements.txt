@@ -8,4 +8,4 @@ reportlab
 openpyxl
 joblib
 scikit-learn
-kaleido
+kaleido==0.2.1
