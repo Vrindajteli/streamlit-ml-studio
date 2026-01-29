@@ -82,7 +82,7 @@ def show():
     plot_clicked = False
 
     if can_show_button(chart_type, x_col, y_col):
-        plot_clicked = st.sidebar.button("📊 Plot Chart")
+        plot_clicked = st.sidebar.button("Plot Chart")
 
     # --------------------------------------------------
     # CHART RENDERING (ONLY AFTER BUTTON CLICK)
@@ -179,3 +179,4 @@ def show():
                 margin=dict(l=40, r=40, t=60, b=40)
             )
             st.plotly_chart(fig, use_container_width=True)
+
