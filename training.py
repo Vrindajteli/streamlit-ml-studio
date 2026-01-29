@@ -180,8 +180,6 @@ def show():
             disabled=True
         )
 
-        st.sidebar.info("Algorithm selection is locked because Auto-detect is enabled.")
-
     else:
         algo_name = st.sidebar.selectbox(
             "Select Algorithm",
@@ -279,3 +277,4 @@ def show():
 
         with open(model_path, "rb") as f:
             st.download_button("Download Trained Model", f, "trained_model.joblib")
+
