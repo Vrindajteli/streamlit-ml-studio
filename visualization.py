@@ -16,12 +16,12 @@ def show():
     st.write("Upload any dataset and freely create interactive visualizations.")
 
     # --------------------------------------------------
-    # DATA UPLOAD (ISOLATED)
+    # DATA UPLOAD
     # --------------------------------------------------
     file = st.file_uploader(
         "Upload Dataset for Visualization (CSV or XLSX)",
         type=["csv", "xlsx"],
-        key="visualization_file"   # 🔑 IMPORTANT
+        key="visualization_file"
     )
 
     if not file:
@@ -29,15 +29,9 @@ def show():
         st.stop()
 
     df = pd.read_csv(file) if file.name.endswith(".csv") else pd.read_excel(file)
-
-    # 🔧 COLUMN SAFETY
     df.columns = df.columns.str.strip()
 
-    # --------------------------------------------------
-    # BASIC INFO
-    # --------------------------------------------------
     num_cols = df.select_dtypes(include=np.number).columns.tolist()
-    cat_cols = df.select_dtypes(exclude=np.number).columns.tolist()
     all_cols = df.columns.tolist()
 
     st.subheader("Dataset Preview")
@@ -61,15 +55,8 @@ def show():
         ]
     )
 
-    x_col = st.sidebar.selectbox(
-        "X Axis",
-        ["-- Select --"] + all_cols
-    )
-
-    y_col = st.sidebar.selectbox(
-        "Y Axis",
-        ["-- Select --"] + all_cols
-    )
+    x_col = st.sidebar.selectbox("X Axis", ["-- Select --"] + all_cols)
+    y_col = st.sidebar.selectbox("Y Axis", ["-- Select --"] + all_cols)
 
     color_col = st.sidebar.selectbox(
         "Color (Optional)",
@@ -84,24 +71,23 @@ def show():
     # --------------------------------------------------
     # VALIDATION
     # --------------------------------------------------
-    def validate_axes(x, y, chart):
+    def can_show_button(chart, x, y):
         if chart in ["Histogram", "Pie Chart", "Correlation Heatmap"]:
-            return True
-
-        if x == "-- Select --":
-            st.warning("Please select X axis")
-            return False
-
-        if chart != "Bar Chart" and y == "-- Select --":
-            st.warning("Please select Y axis")
-            return False
-
-        return True
+            return x != "-- Select --" or y != "-- Select --"
+        return x != "-- Select --" and y != "-- Select --"
 
     # --------------------------------------------------
-    # CHART RENDERING
+    # PLOT BUTTON (CONDITIONAL)
     # --------------------------------------------------
-    if validate_axes(x_col, y_col, chart_type):
+    plot_clicked = False
+
+    if can_show_button(chart_type, x_col, y_col):
+        plot_clicked = st.sidebar.button("📊 Plot Chart")
+
+    # --------------------------------------------------
+    # CHART RENDERING (ONLY AFTER BUTTON CLICK)
+    # --------------------------------------------------
+    if plot_clicked:
 
         fig = None
 
@@ -122,12 +108,10 @@ def show():
                     fig = px.bar(temp, x=x_col, y="Count")
 
                 elif agg_func in ["Sum", "Mean"]:
-                    if y_col == "-- Select --":
-                        st.warning("Please select Y axis for aggregation")
-                    else:
-                        func = "sum" if agg_func == "Sum" else "mean"
-                        temp = df.groupby(x_col)[y_col].agg(func).reset_index()
-                        fig = px.bar(temp, x=x_col, y=y_col)
+                    temp = df.groupby(x_col)[y_col].agg(
+                        "sum" if agg_func == "Sum" else "mean"
+                    ).reset_index()
+                    fig = px.bar(temp, x=x_col, y=y_col)
 
         # ---------------- LINE ----------------
         elif chart_type == "Line Chart":
@@ -166,23 +150,17 @@ def show():
 
         # ---------------- PIE ----------------
         elif chart_type == "Pie Chart":
-
-            if x_col == "-- Select --":
-                st.warning("Please select a column for Pie Chart")
-
+            if y_col == "-- Select --":
+                temp = df[x_col].value_counts().reset_index()
+                temp.columns = [x_col, "Count"]
+                fig = px.pie(temp, names=x_col, values="Count")
             else:
-                if y_col == "-- Select --":
-                    temp = df[x_col].value_counts().reset_index()
-                    temp.columns = [x_col, "Count"]
-                    fig = px.pie(temp, names=x_col, values="Count")
-                else:
-                    fig = px.pie(df, names=x_col, values=y_col)
+                fig = px.pie(df, names=x_col, values=y_col)
 
         # ---------------- HEATMAP ----------------
         elif chart_type == "Correlation Heatmap":
-
             if len(num_cols) < 2:
-                st.warning("Need at least 2 numeric columns")
+                st.warning("Need at least two numeric columns.")
             else:
                 corr = df[num_cols].corr()
                 fig = px.imshow(
