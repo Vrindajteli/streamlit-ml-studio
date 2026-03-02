@@ -2,273 +2,199 @@ def show():
     import streamlit as st
     import pandas as pd
     import numpy as np
-    import tempfile
-
-    import matplotlib.pyplot as plt
-    import seaborn as sns
     import plotly.express as px
-
-    from reportlab.platypus import (
-        SimpleDocTemplate,
-        Paragraph,
-        Spacer,
-        Table,
-        TableStyle,
-        Image
-    )
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib import colors
-
     from background import apply_background
 
     # --------------------------------------------------
-    # PAGE CONFIG
+    # BACKGROUND
     # --------------------------------------------------
-    st.set_page_config(page_title="EDA Studio", layout="wide")
     apply_background()
 
-    st.title("📊 Exploratory Data Analysis")
+    st.title("Data Visualization Studio")
+    st.write("Upload any dataset and freely create interactive visualizations.")
 
     # --------------------------------------------------
-    # FILE UPLOAD
+    # DATA UPLOAD
     # --------------------------------------------------
-    file = st.file_uploader("Upload CSV or Excel file", type=["csv", "xlsx"])
+    file = st.file_uploader(
+        "Upload Dataset for Visualization (CSV or XLSX)",
+        type=["csv", "xlsx"],
+        key="visualization_file"
+    )
 
     if not file:
-        st.info("📂 Upload a dataset to continue")
+        st.info("Upload a dataset to start visualizing")
         st.stop()
 
     df = pd.read_csv(file) if file.name.endswith(".csv") else pd.read_excel(file)
+    df.columns = df.columns.str.strip()
 
     num_cols = df.select_dtypes(include=np.number).columns.tolist()
-    cat_cols = df.select_dtypes(exclude=np.number).columns.tolist()
+    all_cols = df.columns.tolist()
 
-    # --------------------------------------------------
-    # SIDEBAR
-    # --------------------------------------------------
-    st.sidebar.title("EDA Options")
-
-    analysis_type = st.sidebar.selectbox(
-        "Select Analysis Type",
-        [
-            "Dataset Health",
-            "Univariate Analysis",
-            "Bivariate Analysis",
-            "Multivariate Analysis"
-        ]
-    )
-
-    generate_pdf = st.sidebar.button("Generate PDF Report")
-
-    # --------------------------------------------------
-    # DATA PREVIEW
-    # --------------------------------------------------
     st.subheader("Dataset Preview")
     st.dataframe(df.head(), use_container_width=True)
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Rows", df.shape[0])
-    c2.metric("Columns", df.shape[1])
-    c3.metric("Missing Values", int(df.isnull().sum().sum()))
-
     # --------------------------------------------------
-    # UTILITIES
+    # SIDEBAR CONTROLS
     # --------------------------------------------------
-    def format_df_for_pdf(dataframe, max_rows=10):
-        df_copy = dataframe.head(max_rows).copy()
-        for col in df_copy.select_dtypes(include=np.number).columns:
-            df_copy[col] = df_copy[col].round(2)
-        return df_copy.astype(str)
+    st.sidebar.header("Visualization Controls")
 
-    def dataset_health(dataframe):
-        return pd.DataFrame({
-            "Column": dataframe.columns,
-            "Data Type": dataframe.dtypes.astype(str),
-            "Missing %": (dataframe.isna().mean() * 100).round(2),
-            "Unique Values": dataframe.nunique()
-        })
-
-    # --------------------------------------------------
-    # PDF GENERATOR
-    # --------------------------------------------------
-    def generate_pdf_report(title, df, health_df, image_path=None):
-        pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-        doc = SimpleDocTemplate(pdf.name, pagesize=A4)
-
-        styles = getSampleStyleSheet()
-        elements = []
-
-        usable_width = A4[0] - doc.leftMargin - doc.rightMargin
-
-        elements.append(Paragraph(title, styles["Title"]))
-        elements.append(Spacer(1, 12))
-
-        # ---- Summary ----
-        summary = pd.DataFrame({
-            "Metric": ["Rows", "Columns", "Missing Values"],
-            "Value": [df.shape[0], df.shape[1], int(df.isnull().sum().sum())]
-        })
-
-        elements.append(Paragraph("Dataset Summary", styles["Heading2"]))
-        elements.append(Spacer(1, 6))
-
-        summary_table = Table(
-            [summary.columns.tolist()] + summary.values.tolist(),
-            colWidths=[usable_width * 0.5, usable_width * 0.5]
-        )
-
-        summary_table.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 1, colors.grey),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-            ("PADDING", (0, 0), (-1, -1), 6)
-        ]))
-
-        elements.append(summary_table)
-        elements.append(Spacer(1, 12))
-
-        # ---- Preview Table ----
-        elements.append(Paragraph("Dataset Preview", styles["Heading2"]))
-        elements.append(Spacer(1, 6))
-
-        preview_df = format_df_for_pdf(df)
-        col_count = len(preview_df.columns)
-        col_widths = [usable_width / col_count] * col_count
-
-        preview_table = Table(
-            [preview_df.columns.tolist()] + preview_df.values.tolist(),
-            colWidths=col_widths,
-            repeatRows=1
-        )
-
-        preview_table.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-            ("FONTSIZE", (0, 0), (-1, -1), 7),
-            ("WORDWRAP", (0, 0), (-1, -1), True),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ]))
-
-        elements.append(preview_table)
-        elements.append(Spacer(1, 12))
-
-        # ---- Health Table ----
-        elements.append(Paragraph("Dataset Health", styles["Heading2"]))
-        elements.append(Spacer(1, 6))
-
-        health_df = format_df_for_pdf(health_df)
-        health_widths = [
-            usable_width * 0.3,
-            usable_width * 0.25,
-            usable_width * 0.2,
-            usable_width * 0.25,
+    chart_type = st.sidebar.selectbox(
+        "Select Chart Type",
+        [
+            "Bar Chart",
+            "Line Chart",
+            "Scatter Plot",
+            "Histogram",
+            "Box Plot",
+            "Pie Chart",
+            "Correlation Heatmap"
         ]
+    )
 
-        health_table = Table(
-            [health_df.columns.tolist()] + health_df.values.tolist(),
-            colWidths=health_widths,
-            repeatRows=1
-        )
+    x_col = st.sidebar.selectbox("X Axis", ["-- Select --"] + all_cols)
+    y_col = st.sidebar.selectbox("Y Axis", ["-- Select --"] + all_cols)
 
-        health_table.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-            ("FONTSIZE", (0, 0), (-1, -1), 7),
-            ("WORDWRAP", (0, 0), (-1, -1), True),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ]))
+    color_col = st.sidebar.selectbox(
+        "Color (Optional)",
+        ["None"] + all_cols
+    )
 
-        elements.append(health_table)
-
-        if image_path:
-            elements.append(Spacer(1, 20))
-            elements.append(Image(image_path, width=420, height=300))
-
-        doc.build(elements)
-        return pdf.name
+    agg_func = st.sidebar.selectbox(
+        "Aggregation (for categorical X)",
+        ["None", "Count", "Sum", "Mean"]
+    )
 
     # --------------------------------------------------
-    # ANALYSIS FUNCTIONS
+    # VALIDATION
     # --------------------------------------------------
-    def univariate_analysis(df):
-        col = st.sidebar.selectbox("Select Column", df.columns)
+    def can_show_button(chart, x, y):
+        if chart in ["Histogram", "Pie Chart", "Correlation Heatmap"]:
+            return x != "-- Select --" or y != "-- Select --"
+        return x != "-- Select --" and y != "-- Select --"
 
-        if col in num_cols:
-            fig = px.histogram(df, x=col, marginal="box")
-        else:
-            fig = px.bar(df[col].value_counts().reset_index(),
-                         x="index", y=col)
+    plot_clicked = False
 
-        st.plotly_chart(fig, use_container_width=True)
-        return fig
-
-    def bivariate_analysis(df):
-        x = st.sidebar.selectbox("X Axis", df.columns)
-        y = st.sidebar.selectbox("Y Axis", df.columns)
-
-        if x == y:
-            st.warning("X and Y must be different")
-            return None
-
-        if x in num_cols and y in num_cols:
-            fig = px.scatter(df, x=x, y=y, trendline="ols")
-        else:
-            fig = px.box(df, x=x, y=y)
-
-        st.plotly_chart(fig, use_container_width=True)
-        return fig
-
-    def multivariate_analysis(df):
-        fig, ax = plt.subplots(figsize=(14, 8))
-        sns.heatmap(df[num_cols].corr(), annot=True, cmap="RdBu_r", ax=ax)
-        st.pyplot(fig)
-        return fig
+    if can_show_button(chart_type, x_col, y_col):
+        plot_clicked = st.sidebar.button("Plot Chart")
 
     # --------------------------------------------------
-    # RENDER
+    # CHART RENDERING
     # --------------------------------------------------
-    health_df = dataset_health(df)
-    fig = None
+    if plot_clicked:
 
-    if analysis_type == "Dataset Health":
-        st.dataframe(health_df, use_container_width=True)
+        fig = None
 
-    elif analysis_type == "Univariate Analysis":
-        fig = univariate_analysis(df)
+        # ---------------- BAR ----------------
+        if chart_type == "Bar Chart":
 
-    elif analysis_type == "Bivariate Analysis":
-        fig = bivariate_analysis(df)
+            if agg_func == "None":
+                fig = px.bar(
+                    df,
+                    x=x_col,
+                    y=None if y_col == "-- Select --" else y_col,
+                    color=None if color_col == "None" else color_col
+                )
 
-    elif analysis_type == "Multivariate Analysis":
-        fig = multivariate_analysis(df)
+            else:
+                if agg_func == "Count":
+                    temp = df.groupby(x_col).size().reset_index(name="Count")
+                    fig = px.bar(temp, x=x_col, y="Count")
 
-    # --------------------------------------------------
-    # PDF DOWNLOAD
-    # --------------------------------------------------
-    if generate_pdf:
-        img_path = None
+                elif agg_func in ["Sum", "Mean"]:
+                    temp = df.groupby(x_col)[y_col].agg(
+                        "sum" if agg_func == "Sum" else "mean"
+                    ).reset_index()
+                    fig = px.bar(temp, x=x_col, y=y_col)
 
-        if fig is not None:
-            img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
-
-            if hasattr(fig, "write_image"):   # Plotly
-                fig.write_image(img_path, scale=2)
-            else:                             # Matplotlib
-                fig.savefig(img_path, bbox_inches="tight")
-                plt.close()
-
-        pdf_path = generate_pdf_report(
-            f"{analysis_type} Report",
-            df,
-            health_df,
-            img_path
-        )
-
-        with open(pdf_path, "rb") as f:
-            st.download_button(
-                "Download PDF",
-                f,
-                file_name="eda_report.pdf"
+        # ---------------- LINE ----------------
+        elif chart_type == "Line Chart":
+            fig = px.line(
+                df,
+                x=x_col,
+                y=y_col,
+                color=None if color_col == "None" else color_col
             )
+
+        # ---------------- SCATTER ----------------
+        elif chart_type == "Scatter Plot":
+            fig = px.scatter(
+                df,
+                x=x_col,
+                y=y_col,
+                color=None if color_col == "None" else color_col
+            )
+
+        # ---------------- HISTOGRAM ----------------
+        elif chart_type == "Histogram":
+            main_col = x_col if x_col != "-- Select --" else y_col
+            fig = px.histogram(
+                df,
+                x=main_col,
+                color=None if color_col == "None" else color_col
+            )
+
+        # ---------------- BOX ----------------
+        elif chart_type == "Box Plot":
+            fig = px.box(
+                df,
+                x=x_col,
+                y=y_col,
+                color=None if color_col == "None" else color_col
+            )
+
+        # ---------------- PIE ----------------
+        elif chart_type == "Pie Chart":
+            if y_col == "-- Select --":
+                temp = df[x_col].value_counts().reset_index()
+                temp.columns = [x_col, "Count"]
+                fig = px.pie(temp, names=x_col, values="Count")
+            else:
+                fig = px.pie(df, names=x_col, values=y_col)
+
+        # ---------------- HEATMAP ----------------
+        elif chart_type == "Correlation Heatmap":
+            if len(num_cols) < 2:
+                st.warning("Need at least two numeric columns.")
+            else:
+                corr = df[num_cols].corr()
+                fig = px.imshow(
+                    corr,
+                    text_auto=".2f",
+                    aspect="auto",
+                    color_continuous_scale="RdBu_r"
+                )
+
+        # --------------------------------------------------
+        # TITLE + DISPLAY (WHITE TITLE)
+        # --------------------------------------------------
+        if fig:
+
+            if chart_type == "Histogram":
+                title_text = f"{chart_type} of {main_col}"
+
+            elif chart_type == "Pie Chart":
+                title_text = f"{chart_type} of {x_col}"
+
+            elif chart_type == "Correlation Heatmap":
+                title_text = "Correlation Heatmap of Numeric Features"
+
+            elif chart_type == "Bar Chart" and agg_func != "None":
+                title_text = f"{agg_func} of {y_col} grouped by {x_col}"
+
+            else:
+                title_text = f"{chart_type}: {y_col} vs {x_col}"
+
+            fig.update_layout(
+                title={
+                    "text": title_text,
+                    "x": 0.5,
+                    "xanchor": "center",
+                    "font": {"size": 22, "color": "white"}
+                },
+                height=650,
+                margin=dict(l=40, r=40, t=90, b=40)
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
