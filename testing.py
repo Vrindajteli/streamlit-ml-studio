@@ -42,7 +42,7 @@ def show():
     st.write("Train once, then make live manual predictions on a fresh dataset.")
 
     # --------------------------------------------------
-    # SESSION STATE INIT (MODEL ONLY)
+    # SESSION STATE INIT
     # --------------------------------------------------
     if "trained" not in st.session_state:
         st.session_state.trained = False
@@ -54,7 +54,7 @@ def show():
         st.session_state.label_encoder = None
 
     # --------------------------------------------------
-    # DATA UPLOAD (ISOLATED TO TESTING)
+    # DATA UPLOAD
     # --------------------------------------------------
     file = st.file_uploader(
         "Upload Dataset for Testing (CSV or XLSX)",
@@ -67,15 +67,13 @@ def show():
         st.stop()
 
     df = pd.read_csv(file) if file.name.endswith(".csv") else pd.read_excel(file)
-
-    # COLUMN SAFETY
     df.columns = df.columns.str.strip()
 
     st.subheader("Dataset Preview")
     st.dataframe(df.head(), use_container_width=True)
 
     # --------------------------------------------------
-    # BASIC CHECKS
+    # BASIC CHECK
     # --------------------------------------------------
     num_cols = df.select_dtypes(include="number").columns.tolist()
 
@@ -98,15 +96,10 @@ def show():
         num_cols
     )
 
-    # FEATURE SELECTION
     features = st.sidebar.multiselect(
         "Select Input Features",
         [c for c in num_cols if c != target]
     )
-
-    if not features:
-        st.warning("Select at least one feature.")
-        st.stop()
 
     # --------------------------------------------------
     # MODEL REGISTRY
@@ -139,9 +132,17 @@ def show():
         model = CLASSIFICATION_MODELS[algo_name]
 
     # --------------------------------------------------
+    # TRAIN BUTTON (DISABLED UNTIL FEATURES SELECTED)
+    # --------------------------------------------------
+    train_button = st.sidebar.button(
+        "Train Model",
+        disabled=(len(features) == 0)
+    )
+
+    # --------------------------------------------------
     # TRAIN MODEL
     # --------------------------------------------------
-    if st.sidebar.button("Train Model"):
+    if train_button:
 
         X = df[features]
         y = df[target]
@@ -163,7 +164,6 @@ def show():
 
         st.success("Model trained successfully")
 
-        # ---------------- REGRESSION RESULTS ----------------
         if task == "Regression":
             rmse = np.sqrt(mean_squared_error(y_test, preds))
             r2 = r2_score(y_test, preds)
@@ -186,7 +186,6 @@ def show():
 
             st.pyplot(fig)
 
-        # ---------------- CLASSIFICATION RESULTS ----------------
         else:
             acc = accuracy_score(y_test, preds)
             st.metric("Accuracy", round(acc, 3))
@@ -206,9 +205,6 @@ def show():
 
             st.pyplot(fig)
 
-        # --------------------------------------------------
-        # SAVE TRAINED OBJECTS ONLY
-        # --------------------------------------------------
         st.session_state.model = model
         st.session_state.scaler = scaler
         st.session_state.features = features
@@ -226,11 +222,6 @@ def show():
         user_input = {}
 
         for col in st.session_state.features:
-
-            if col not in df.columns:
-                st.error(f"Feature '{col}' not found in uploaded dataset.")
-                st.stop()
-
             user_input[col] = st.number_input(
                 f"Enter {col}",
                 value=float(df[col].mean())
