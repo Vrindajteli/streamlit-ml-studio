@@ -138,10 +138,10 @@ def show():
     task = st.sidebar.selectbox("Select ML Task", ["Regression", "Classification"])
     target = st.sidebar.selectbox("Select Target Column", num_cols)
 
+    # FEATURE SELECTION
     features = st.sidebar.multiselect(
         "Select Input Features",
-        [c for c in num_cols if c != target],
-        default=[c for c in num_cols if c != target][:2]
+        [c for c in num_cols if c != target]
     )
 
     split_option = st.sidebar.selectbox(
@@ -160,7 +160,7 @@ def show():
     auto_detect = st.sidebar.checkbox("Auto-detect Best Model", value=True)
 
     # --------------------------------------------------
-    # ALGORITHM SELECTION (VALIDATION ADDED)
+    # ALGORITHM SELECTION
     # --------------------------------------------------
     model_list = list(
         REGRESSION_MODELS.keys()
@@ -169,6 +169,7 @@ def show():
     )
 
     if auto_detect and features:
+
         st.session_state.auto_model_name = auto_select_model(
             task, df[features], df[target], test_size
         )
@@ -181,10 +182,7 @@ def show():
         )
 
     else:
-        algo_name = st.sidebar.selectbox(
-            "Select Algorithm",
-            model_list
-        )
+        algo_name = st.sidebar.selectbox("Select Algorithm", model_list)
 
     model = (
         REGRESSION_MODELS[algo_name]
@@ -193,9 +191,20 @@ def show():
     )
 
     # --------------------------------------------------
+    # TRAIN MODEL BUTTON (DISABLED IF NO FEATURES)
+    # --------------------------------------------------
+    train_button = st.sidebar.button(
+        "Train Model",
+        disabled=(len(features) == 0)
+    )
+
+    if len(features) == 0:
+        st.sidebar.warning("Select at least one feature to enable training.")
+
+    # --------------------------------------------------
     # TRAIN MODEL
     # --------------------------------------------------
-    if st.sidebar.button("Train Model"):
+    if train_button:
 
         X = df[features]
         y = df[target]
@@ -264,6 +273,7 @@ def show():
         st.download_button("Download Testing Data", X_test_df.to_csv(index=False), "testing_data.csv")
 
         model_path = tempfile.NamedTemporaryFile(delete=False, suffix=".joblib").name
+
         joblib.dump(
             {
                 "model": st.session_state.model,
@@ -277,5 +287,3 @@ def show():
 
         with open(model_path, "rb") as f:
             st.download_button("Download Trained Model", f, "trained_model.joblib")
-
-
