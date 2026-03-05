@@ -278,3 +278,4 @@ def show():
         with open(model_path, "rb") as f:
             st.download_button("Download Trained Model", f, "trained_model.joblib")
 
+
