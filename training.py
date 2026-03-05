@@ -68,7 +68,7 @@ def show():
     }
 
     # --------------------------------------------------
-    # AUTO MODEL SELECTION FUNCTION
+    # AUTO MODEL SELECTION
     # --------------------------------------------------
     def auto_select_model(task, X, y, test_size):
         scaler = StandardScaler()
@@ -138,7 +138,7 @@ def show():
     task = st.sidebar.selectbox("Select ML Task", ["Regression", "Classification"])
     target = st.sidebar.selectbox("Select Target Column", num_cols)
 
-    # FEATURE SELECTION
+    # EMPTY FEATURE SELECTION
     features = st.sidebar.multiselect(
         "Select Input Features",
         [c for c in num_cols if c != target]
@@ -169,7 +169,6 @@ def show():
     )
 
     if auto_detect and features:
-
         st.session_state.auto_model_name = auto_select_model(
             task, df[features], df[target], test_size
         )
@@ -182,7 +181,10 @@ def show():
         )
 
     else:
-        algo_name = st.sidebar.selectbox("Select Algorithm", model_list)
+        algo_name = st.sidebar.selectbox(
+            "Select Algorithm",
+            model_list
+        )
 
     model = (
         REGRESSION_MODELS[algo_name]
@@ -191,15 +193,12 @@ def show():
     )
 
     # --------------------------------------------------
-    # TRAIN MODEL BUTTON (DISABLED IF NO FEATURES)
+    # TRAIN BUTTON (DISABLED UNTIL FEATURE SELECTED)
     # --------------------------------------------------
     train_button = st.sidebar.button(
         "Train Model",
         disabled=(len(features) == 0)
     )
-
-    if len(features) == 0:
-        st.sidebar.warning("Select at least one feature to enable training.")
 
     # --------------------------------------------------
     # TRAIN MODEL
