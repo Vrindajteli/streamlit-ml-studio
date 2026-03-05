@@ -59,7 +59,7 @@ def show():
     file = st.file_uploader(
         "Upload Dataset for Testing (CSV or XLSX)",
         type=["csv", "xlsx"],
-        key="testing_file"   # 🔑 IMPORTANT
+        key="testing_file"
     )
 
     if not file:
@@ -68,7 +68,7 @@ def show():
 
     df = pd.read_csv(file) if file.name.endswith(".csv") else pd.read_excel(file)
 
-    # 🔧 COLUMN SAFETY
+    # COLUMN SAFETY
     df.columns = df.columns.str.strip()
 
     st.subheader("Dataset Preview")
@@ -98,10 +98,10 @@ def show():
         num_cols
     )
 
+    # FEATURE SELECTION
     features = st.sidebar.multiselect(
         "Select Input Features",
-        [c for c in num_cols if c != target],
-        default=[c for c in num_cols if c != target][:2]
+        [c for c in num_cols if c != target]
     )
 
     if not features:
@@ -174,12 +174,16 @@ def show():
 
             fig, ax = plt.subplots(figsize=(7, 6))
             ax.scatter(y_test, preds, alpha=0.7)
+
             min_val = min(y_test.min(), preds.min())
             max_val = max(y_test.max(), preds.max())
+
             ax.plot([min_val, max_val], [min_val, max_val], linestyle="--")
+
             ax.set_xlabel("Actual")
             ax.set_ylabel("Predicted")
             ax.set_title("Actual vs Predicted")
+
             st.pyplot(fig)
 
         # ---------------- CLASSIFICATION RESULTS ----------------
@@ -188,8 +192,10 @@ def show():
             st.metric("Accuracy", round(acc, 3))
 
             cm = confusion_matrix(y_test, preds)
+
             fig, ax = plt.subplots()
             ax.imshow(cm)
+
             ax.set_title("Confusion Matrix")
             ax.set_xlabel("Predicted")
             ax.set_ylabel("Actual")
@@ -231,6 +237,7 @@ def show():
             )
 
         input_df = pd.DataFrame([user_input])
+
         input_scaled = st.session_state.scaler.transform(input_df)
 
         pred = st.session_state.model.predict(input_scaled)
