@@ -7,8 +7,8 @@ def show():
 
     st.write("Upload a trained model (.joblib) OR upload a dataset to test.")
 
+    # MODEL UPLOADER FIRST
     model_file = st.file_uploader("Upload Model (.joblib)", type=["joblib"])
-    dataset_file = st.file_uploader("Upload Dataset (.csv or .xlsx)", type=["csv","xlsx"])
 
     # ----------------------------
     # MODEL UPLOAD SECTION
@@ -29,9 +29,7 @@ def show():
 
         st.success("Model Loaded Successfully")
 
-        # ----------------------------
-        # Display Model Metrics
-        # ----------------------------
+        # Model Metrics
         st.subheader("Model Performance")
 
         if task == "Regression":
@@ -45,13 +43,10 @@ def show():
                 col2.metric("R² Score", round(r2, 4))
 
         else:
-
             if accuracy is not None:
                 st.metric("Accuracy", round(accuracy, 4))
 
-        # ----------------------------
         # Manual Prediction
-        # ----------------------------
         st.subheader("Manual Prediction")
 
         input_data = {}
@@ -73,29 +68,29 @@ def show():
             st.success(f"Predicted {target}: {prediction[0]}")
 
     # ----------------------------
-    # DATASET UPLOAD SECTION
+    # DATASET UPLOAD (ONLY IF NO MODEL)
     # ----------------------------
-    elif dataset_file is not None:
+    else:
 
-        # Detect file type
-        if dataset_file.name.endswith(".csv"):
-            df = pd.read_csv(dataset_file)
+        dataset_file = st.file_uploader(
+            "Upload Dataset (.csv / .xlsx)",
+            type=["csv", "xlsx"]
+        )
 
-        elif dataset_file.name.endswith(".xlsx"):
-            df = pd.read_excel(dataset_file)
+        if dataset_file is not None:
 
-        st.subheader("Dataset Preview")
-        st.dataframe(df.head())
+            if dataset_file.name.endswith(".csv"):
+                df = pd.read_csv(dataset_file)
+            else:
+                df = pd.read_excel(dataset_file)
 
-        target_column = st.selectbox("Select Target Column", df.columns)
+            st.subheader("Dataset Preview")
+            st.dataframe(df.head())
 
-        X = df.drop(columns=[target_column])
-        y = df[target_column]
+            target_column = st.selectbox("Select Target Column", df.columns)
 
-        st.write("Features detected:", list(X.columns))
+            X = df.drop(columns=[target_column])
 
-        if st.button("Run Prediction"):
+            st.write("Features detected:", list(X.columns))
 
-            st.warning("Dataset uploaded but no trained model available to run predictions.")
-
-            st.info("Please upload a trained .joblib model to make predictions.")
+            st.warning("Upload a trained .joblib model to run predictions.")
