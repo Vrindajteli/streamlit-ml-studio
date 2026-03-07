@@ -3,6 +3,7 @@ def show():
     import pandas as pd
     import numpy as np
     import matplotlib.pyplot as plt
+    import joblib
 
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import StandardScaler, LabelEncoder
@@ -52,6 +53,45 @@ def show():
         st.session_state.target = None
         st.session_state.task = None
         st.session_state.label_encoder = None
+
+    # --------------------------------------------------
+    # MODEL UPLOAD OPTION
+    # --------------------------------------------------
+    model_file = st.file_uploader(
+        "Upload Trained Model (.joblib) instead of Dataset",
+        type=["joblib"],
+        key="model_upload"
+    )
+
+    if model_file:
+
+        model_data = joblib.load(model_file)
+
+        st.session_state.model = model_data["model"]
+        st.session_state.scaler = model_data["scaler"]
+        st.session_state.features = model_data["features"]
+        st.session_state.target = model_data["target"]
+        st.session_state.task = model_data["task"]
+        st.session_state.trained = True
+
+        st.success("Model loaded successfully")
+
+        st.subheader("Manual Prediction")
+
+        user_input = {}
+
+        for col in st.session_state.features:
+            user_input[col] = st.number_input(f"Enter {col}")
+
+        input_df = pd.DataFrame([user_input])
+
+        input_scaled = st.session_state.scaler.transform(input_df)
+
+        pred = st.session_state.model.predict(input_scaled)
+
+        st.success(f"Predicted {st.session_state.target}: {pred[0]}")
+
+        st.stop()
 
     # --------------------------------------------------
     # DATA UPLOAD
@@ -132,7 +172,7 @@ def show():
         model = CLASSIFICATION_MODELS[algo_name]
 
     # --------------------------------------------------
-    # TRAIN BUTTON (DISABLED UNTIL FEATURES SELECTED)
+    # TRAIN BUTTON
     # --------------------------------------------------
     train_button = st.sidebar.button(
         "Train Model",
@@ -165,6 +205,7 @@ def show():
         st.success("Model trained successfully")
 
         if task == "Regression":
+
             rmse = np.sqrt(mean_squared_error(y_test, preds))
             r2 = r2_score(y_test, preds)
 
@@ -187,6 +228,7 @@ def show():
             st.pyplot(fig)
 
         else:
+
             acc = accuracy_score(y_test, preds)
             st.metric("Accuracy", round(acc, 3))
 
