@@ -279,7 +279,10 @@ def show():
                 "scaler": st.session_state.scaler,
                 "features": st.session_state.features,
                 "target": st.session_state.target,
-                "task": st.session_state.task
+                "task": st.session_state.task,
+                "rmse": st.session_state.rmse,
+                "r2": st.session_state.r2,
+                "accuracy": st.session_state.accuracy
             },
             model_path
         )
