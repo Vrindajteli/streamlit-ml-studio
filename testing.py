@@ -35,7 +35,20 @@ def show():
     st.title("Machine Learning Testing Studio")
 
     # --------------------------------------------------
-    # CREATE TABS
+    # SESSION STATE INIT
+    # --------------------------------------------------
+
+    if "trained" not in st.session_state:
+        st.session_state.trained = False
+        st.session_state.model = None
+        st.session_state.scaler = None
+        st.session_state.features = None
+        st.session_state.target = None
+        st.session_state.task = None
+        st.session_state.label_encoder = None
+
+    # --------------------------------------------------
+    # TABS
     # --------------------------------------------------
 
     tab1, tab2, tab3 = st.tabs([
@@ -45,7 +58,7 @@ def show():
     ])
 
     # ==================================================
-    # TAB 1 → JOBLIB MANUAL PREDICTION
+    # TAB 1 : USE JOBLIB MODEL
     # ==================================================
 
     with tab1:
@@ -77,16 +90,18 @@ def show():
             st.subheader("Model Performance")
 
             if task == "Regression":
+
                 c1, c2 = st.columns(2)
 
-                if rmse is not None:
+                if rmse:
                     c1.metric("RMSE", round(rmse, 3))
 
-                if r2 is not None:
+                if r2:
                     c2.metric("R² Score", round(r2, 3))
 
             else:
-                if accuracy is not None:
+
+                if accuracy:
                     st.metric("Accuracy", round(accuracy, 3))
 
             st.subheader("Manual Prediction")
@@ -107,7 +122,7 @@ def show():
                 st.success(f"Predicted {target}: {pred[0]}")
 
     # ==================================================
-    # TAB 2 → BATCH PREDICTION
+    # TAB 2 : BATCH PREDICTION
     # ==================================================
 
     with tab2:
@@ -121,7 +136,7 @@ def show():
         )
 
         data_file = st.file_uploader(
-            "Upload Dataset for Prediction",
+            "Upload Dataset for Prediction (CSV or XLSX)",
             type=["csv", "xlsx"],
             key="batch_data"
         )
@@ -135,41 +150,41 @@ def show():
             features = model_data["features"]
             target = model_data["target"]
 
-            if data_file.name.endswith(".csv"):
-                df = pd.read_csv(data_file)
-            else:
-                df = pd.read_excel(data_file)
+            df = pd.read_csv(data_file) if data_file.name.endswith(".csv") else pd.read_excel(data_file)
 
             st.subheader("Dataset Preview")
             st.dataframe(df.head())
 
-            if not all(col in df.columns for col in features):
-                st.error("Dataset does not contain required features.")
-            else:
+            if st.button("Run Batch Prediction"):
 
-                X = df[features]
+                if not all(col in df.columns for col in features):
+                    st.error("Dataset does not contain required features")
 
-                X_scaled = scaler.transform(X)
+                else:
 
-                preds = model.predict(X_scaled)
+                    X = df[features]
 
-                df["Prediction"] = preds
+                    X_scaled = scaler.transform(X)
 
-                st.success("Predictions generated")
+                    preds = model.predict(X_scaled)
 
-                st.dataframe(df.head())
+                    df["Prediction"] = preds
 
-                csv = df.to_csv(index=False).encode("utf-8")
+                    st.success("Predictions generated")
 
-                st.download_button(
-                    "Download predictions.csv",
-                    csv,
-                    "predictions.csv",
-                    "text/csv"
-                )
+                    st.dataframe(df)
+
+                    csv = df.to_csv(index=False).encode("utf-8")
+
+                    st.download_button(
+                        "Download predictions.csv",
+                        csv,
+                        "predictions.csv",
+                        "text/csv"
+                    )
 
     # ==================================================
-    # TAB 3 → YOUR ORIGINAL TRAINING PIPELINE
+    # TAB 3 : TRAIN FROM DATASET
     # ==================================================
 
     with tab3:
@@ -199,7 +214,8 @@ def show():
             st.error("Dataset must contain at least 2 numeric columns.")
             st.stop()
 
-        # SIDEBAR CONFIG
+        # SIDEBAR ONLY FOR DATASET TAB
+
         st.sidebar.header("Model Configuration")
 
         task = st.sidebar.selectbox(
@@ -232,17 +248,21 @@ def show():
         }
 
         if task == "Regression":
+
             algo_name = st.sidebar.selectbox(
                 "Select Regression Algorithm",
                 list(REGRESSION_MODELS.keys())
             )
+
             model = REGRESSION_MODELS[algo_name]
 
         else:
+
             algo_name = st.sidebar.selectbox(
                 "Select Classification Algorithm",
                 list(CLASSIFICATION_MODELS.keys())
             )
+
             model = CLASSIFICATION_MODELS[algo_name]
 
         train_button = st.sidebar.button(
@@ -256,11 +276,16 @@ def show():
             y = df[target]
 
             scaler = StandardScaler()
+
             X_scaled = scaler.fit_transform(X)
 
             if task == "Classification":
+
                 le = LabelEncoder()
+
                 y = le.fit_transform(y)
+
+                st.session_state.label_encoder = le
 
             X_train, X_test, y_train, y_test = train_test_split(
                 X_scaled, y, test_size=0.2, random_state=42
@@ -287,3 +312,52 @@ def show():
                 acc = accuracy_score(y_test, preds)
 
                 st.metric("Accuracy", round(acc, 3))
+
+                cm = confusion_matrix(y_test, preds)
+
+                fig, ax = plt.subplots()
+
+                ax.imshow(cm)
+
+                ax.set_title("Confusion Matrix")
+
+                for i in range(cm.shape[0]):
+                    for j in range(cm.shape[1]):
+                        ax.text(j, i, cm[i, j], ha="center", va="center")
+
+                st.pyplot(fig)
+
+            st.session_state.model = model
+            st.session_state.scaler = scaler
+            st.session_state.features = features
+            st.session_state.target = target
+            st.session_state.task = task
+            st.session_state.trained = True
+
+        # MANUAL PREDICTION
+
+        if st.session_state.trained:
+
+            st.subheader("Manual Prediction")
+
+            user_input = {}
+
+            for col in st.session_state.features:
+
+                user_input[col] = st.number_input(
+                    f"Enter {col}",
+                    value=float(df[col].mean())
+                )
+
+            input_df = pd.DataFrame([user_input])
+
+            input_scaled = st.session_state.scaler.transform(input_df)
+
+            if st.button("Predict", key="dataset_predict"):
+
+                pred = st.session_state.model.predict(input_scaled)
+
+                if st.session_state.task == "Classification":
+                    pred = st.session_state.label_encoder.inverse_transform(pred)
+
+                st.success(f"Predicted {st.session_state.target}: {pred[0]}")
