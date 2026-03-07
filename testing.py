@@ -35,40 +35,23 @@ def show():
     st.title("Machine Learning Testing Studio")
 
     # --------------------------------------------------
-    # SESSION STATE INIT
+    # MODE SELECTOR
     # --------------------------------------------------
 
-    if "trained" not in st.session_state:
-        st.session_state.trained = False
-        st.session_state.model = None
-        st.session_state.scaler = None
-        st.session_state.features = None
-        st.session_state.target = None
-        st.session_state.task = None
-        st.session_state.label_encoder = None
-
-    # --------------------------------------------------
-    # TABS
-    # --------------------------------------------------
-
-    tab1, tab2, tab3 = st.tabs([
-        "Use Trained Model (.joblib)",
-        "Batch Prediction",
-        "Train From Dataset"
-    ])
+    mode = st.radio(
+        "Select Mode",
+        ["Use Trained Model (.joblib)", "Train From Dataset"]
+    )
 
     # ==================================================
-    # TAB 1 : USE JOBLIB MODEL
+    # MODE 1 : USE JOBLIB MODEL
     # ==================================================
 
-    with tab1:
-
-        st.header("Use Trained Model")
+    if mode == "Use Trained Model (.joblib)":
 
         model_file = st.file_uploader(
             "Upload Trained Model (.joblib)",
-            type=["joblib"],
-            key="joblib_model"
+            type=["joblib"]
         )
 
         if model_file:
@@ -111,7 +94,7 @@ def show():
             for col in features:
                 user_input[col] = st.number_input(f"Enter {col}")
 
-            if st.button("Predict", key="manual_predict"):
+            if st.button("Predict"):
 
                 input_df = pd.DataFrame([user_input])
 
@@ -122,79 +105,25 @@ def show():
                 st.success(f"Predicted {target}: {pred[0]}")
 
     # ==================================================
-    # TAB 2 : BATCH PREDICTION
+    # MODE 2 : TRAIN FROM DATASET
     # ==================================================
 
-    with tab2:
+    else:
 
-        st.header("Batch Prediction")
+        # SESSION STATE
 
-        model_file = st.file_uploader(
-            "Upload Trained Model (.joblib)",
-            type=["joblib"],
-            key="batch_model"
-        )
-
-        data_file = st.file_uploader(
-            "Upload Dataset for Prediction (CSV or XLSX)",
-            type=["csv", "xlsx"],
-            key="batch_data"
-        )
-
-        if model_file and data_file:
-
-            model_data = joblib.load(model_file)
-
-            model = model_data["model"]
-            scaler = model_data["scaler"]
-            features = model_data["features"]
-            target = model_data["target"]
-
-            df = pd.read_csv(data_file) if data_file.name.endswith(".csv") else pd.read_excel(data_file)
-
-            st.subheader("Dataset Preview")
-            st.dataframe(df.head())
-
-            if st.button("Run Batch Prediction"):
-
-                if not all(col in df.columns for col in features):
-                    st.error("Dataset does not contain required features")
-
-                else:
-
-                    X = df[features]
-
-                    X_scaled = scaler.transform(X)
-
-                    preds = model.predict(X_scaled)
-
-                    df["Prediction"] = preds
-
-                    st.success("Predictions generated")
-
-                    st.dataframe(df)
-
-                    csv = df.to_csv(index=False).encode("utf-8")
-
-                    st.download_button(
-                        "Download predictions.csv",
-                        csv,
-                        "predictions.csv",
-                        "text/csv"
-                    )
-
-    # ==================================================
-    # TAB 3 : TRAIN FROM DATASET
-    # ==================================================
-
-    with tab3:
-
-        st.header("Train Model From Dataset")
+        if "trained" not in st.session_state:
+            st.session_state.trained = False
+            st.session_state.model = None
+            st.session_state.scaler = None
+            st.session_state.features = None
+            st.session_state.target = None
+            st.session_state.task = None
+            st.session_state.label_encoder = None
 
         file = st.file_uploader(
             "Upload Dataset (CSV or XLSX)",
-            type=["csv", "xlsx"],
-            key="train_dataset"
+            type=["csv", "xlsx"]
         )
 
         if not file:
@@ -214,7 +143,7 @@ def show():
             st.error("Dataset must contain at least 2 numeric columns.")
             st.stop()
 
-        # SIDEBAR ONLY FOR DATASET TAB
+        # SIDEBAR CONFIG
 
         st.sidebar.header("Model Configuration")
 
@@ -353,7 +282,7 @@ def show():
 
             input_scaled = st.session_state.scaler.transform(input_df)
 
-            if st.button("Predict", key="dataset_predict"):
+            if st.button("Predict"):
 
                 pred = st.session_state.model.predict(input_scaled)
 
